@@ -13,7 +13,7 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
-func paintboxes(surface *sdl.Surface, board []bool) {
+func paintBoxes(surface *sdl.Surface, board []bool) {
     var x int32
     y := int32(0)
     boxcounter := 0
@@ -42,43 +42,59 @@ func paintboxes(surface *sdl.Surface, board []bool) {
 
 }
 
-func checkevents(running bool, board []bool) bool {
-    mousebutton := false
+func lightUpBoxIn(box int, board []bool) {
+    board[box] = true
+}
 
+func checkEvents(running int, board []bool) int {
     var event sdl.Event
     for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-        /* switch event.(type) {
-        case *sdl.QuitEvent:
-            running = false
-        */
+        // TODO: Wouldn't be cool if instead of these printf's we could output to a transparent overlay, quake-console-style?
         switch t := event.(type) {
         case *sdl.QuitEvent:
-            running = false
-        case *sdl.MouseButtonEvent:
+            running = -1 // code -1 is special, says to die.
+        /*case *sdl.MouseButtonEvent:
+            fmt.Printf("MouseButtonEvent (%d,%d), %d, %d\n", t.X, t.Y, t.Button, t.State)
+            // TODO: Are individual clicks like this interesting? maybe if I implement button controls?
             if t.Button == sdl.BUTTON_LEFT {
                 if t.State == sdl.PRESSED {
                     mousebutton = true
+                    fmt.Printf("Click!")
                 }
                 if t.State == sdl.RELEASED {
                     mousebutton = false
+                    fmt.Printf("Release!")
                 }
-            }
+            }*/
         case *sdl.MouseMotionEvent:
             col := t.X / BBSZ
             row := t.Y / BBSZ
             edge_sz := WINDOWSIZE/BBSZ
             life_cell := row*edge_sz+col
-            if mousebutton {
-                fmt.Printf("clickdrag on %d\n", life_cell)
+            lastbox := int32(-1)
+            thisbox := int32(-1)
+            if t.State & sdl.Button(sdl.ButtonLMask()) == 1 {
+                // fmt.Printf("left drag (%d,%d) = #%d // %dx%d\n", row, col, life_cell, t.X, t.Y)
+                thisbox = life_cell
+                if thisbox != lastbox {
+                    lightUpBoxIn(int(life_cell), board)
+                    lastbox = thisbox
+                }
             }
+            // XXX: This is standin for passing board and coords to a func that toggles cells to liveness
             if col > 1000000 {    // XXX
                 fmt.Printf("%v\n", board) // XXX
             } // XXX
-            // more cooked debug output, actually useful
-            //fmt.Printf("[%dms] MouseMotion (%d,%d) = box %d\n", t.Timestamp, row, col, row*edge_sz+col)
-            // real raw debug output
-            //fmt.Printf("[%dms] MouseMotion\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n", 
-            //    t.Timestamp, t.Which, t.X, t.Y, t.XRel, t.YRel)
+        /* case *sdl.KeyDownEvent:
+            fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
+                t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat) */
+        case *sdl.KeyUpEvent:
+            // Space toggles run state between start and stop
+            if t.Keysym.Sym == ' ' && t.Keysym.Mod == 0 {
+                if running == 0 { running = 1 } else { running = 0 }  // toggle run state 1/0
+            }
+            //fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
+            //    t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
         }
     }
     return running
@@ -91,7 +107,7 @@ func RandomizeBoard(board []bool) []bool {
     return board
 }
 
-func get_neighbor_indexes(i int, board []bool) [8]int {
+func neighborIndices(i int, board []bool) [8]int {
     var prev_row int
     var next_row int
     var prev_col int
@@ -132,7 +148,7 @@ func get_neighbor_indexes(i int, board []bool) [8]int {
 
 func CountNeighbors(i int, board []bool) int {
     var neighbors int
-    neighbor_indexes := get_neighbor_indexes(i, board)
+    neighbor_indexes := neighborIndices(i, board)
     for n := 0; n < 8; n += 1 {
         n_idx := neighbor_indexes[n]
         if board[n_idx] {
@@ -165,7 +181,7 @@ func CalcNextBoard(board []bool) []bool {
 func main() {
     var window *sdl.Window
     var surface *sdl.Surface
-    var running bool
+    var running int
     var err error
 
     // SDL Boilerplate Start
@@ -187,22 +203,24 @@ func main() {
     }
 
     // Game of Life Setup
-    rand.Seed(time.Now().Unix()) // insecure seed sufficient in this case
+    rand.Seed(time.Now().Unix()) // insecure seed is sufficient in this case
     field_edge := WINDOWSIZE/BBSZ
     field_size := field_edge * field_edge
     life_board := make([]bool, field_size)
     life_board = RandomizeBoard(life_board)
 
     // Draw stuff and deal with events
-    running = true
-    for running  {
-        running = checkevents(running, life_board)
-        paintboxes(surface, life_board)
+    // TODO: running states -1,0,1 should probably be some kind of enum. XXX TODO: research enums
+    running = 1
+    for running != -1 {
+        running = checkEvents(running, life_board)
+        paintBoxes(surface, life_board)
         window.UpdateSurface()
 
         sdl.Delay(200) // 1/5 second
-
-        life_board = CalcNextBoard(life_board)
+        if running == 1 {
+            life_board = CalcNextBoard(life_board)
+        }
     }
 
 }
