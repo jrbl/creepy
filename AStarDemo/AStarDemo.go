@@ -20,10 +20,16 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
-func ItoXY(i int, rowCount int) int, int {
-    x := i / rowCount
-    y := i % rowCount
+func ItoXY(i int, rowSize int) (int, int) {
+    // Convert 1d slice indexes to 2d positions, (0, 0) in top left
+    x := i / rowSize
+    y := i % rowSize
     return x, y
+}
+
+func XYtoI(x int, y int, rowSize int) int {
+    // Convert 2d positions to 1d slice index
+    return y * rowSize + x
 }
 
 func ManhattanDistance(posX int, goalX int, posY int, goalY int) float64 {
@@ -38,18 +44,15 @@ func ManhattanDistance(posX int, goalX int, posY int, goalY int) float64 {
 func InformedManhattanDistance(pos int, goal int, start int, rowSize int) float64 {
     // Use Manhattan distance, but fudge it by a tiny factor calculated with reference to the straight-line
     // path between start and finish points. This should break ties by preferring the more direct path.
-    goalX := goal / rowSize
-    goalY := goal % rowSize
-    posX := pos / rowSize
-    posY := pos % rowSize
-    startX := start / rowSize
-    startY := start % rowSize
+    goalX, goalY := ItoXY(goal, rowSize)
+    posX, posY := ItoXY(pos, rowSize)
+    startX, startY := ItoXY(start, rowSize)
+    heuristic := float64(ManhattanDistance(posX, goalX, posY, goalY))
     dx1 := posX - goalX
     dy1 := posY - goalY
     dx2 := startX - goalX
     dy2 := startY - goalY
     crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
-    heuristic := float64(ManhattanDistance(posX, goalX, posY, goalY))
     return heuristic + crossProduct*0.001
 }
 
@@ -121,7 +124,7 @@ func checkEvents(running int, board []bool) int {
             col := t.X / BBSZ
             row := t.Y / BBSZ
             edge_sz := WINDOWSIZE/BBSZ
-            life_cell := row*edge_sz+col
+            life_cell := XYtoI(col, row, edge_sz)
             lastbox := int32(-1)
             thisbox := int32(-1)
             if t.State & sdl.Button(sdl.ButtonLMask()) == 1 {

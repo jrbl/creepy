@@ -1,14 +1,41 @@
 package main
 
-import "fmt"
+//import "fmt"
 import "testing"
 
-/* func TestItoXY(t *testing.T) {
-    if x, y := ItoXY(8, 3); x != 2 || y != 2 {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)",
-            8, x, y, 2, 2)
+ func TestItoXY(t *testing.T) {
+    exX, exY := 0, 0
+    if x, y := ItoXY(0, 3); x != exX || y != exY {
+		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", 0, x, y, exX, exY)
     }
-} */
+    exX, exY = 2, 2
+    if x, y := ItoXY(8, 3); x != exX || y != exY {
+		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", 8, x, y, exX, exY)
+    }
+    exX, exY = 0, 2
+    if x, y := ItoXY(2, 3); x != exX || y != exY {
+		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", 2, x, y, exX, exY)
+    }
+}
+
+func TestXYtoI(t *testing.T) {
+    exI, x, y := 0, 0, 0 // top left
+    if i := XYtoI(x, y, 3); i != exI {
+        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
+    }
+    exI, x, y = 8, 2, 2 // bottom right
+    if i := XYtoI(x, y, 3); i != exI {
+        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
+    }
+    exI, x, y = 6, 0, 2 // bottom left
+    if i := XYtoI(x, y, 3); i != exI {
+        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
+    }
+    exI, x, y = 2, 2, 0 // top right
+    if i := XYtoI(x, y, 3); i != exI {
+        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
+    }
+}
 
 func TestManhattanDistance(t *testing.T) {
     // grid of 9 squares, bottom right to top left

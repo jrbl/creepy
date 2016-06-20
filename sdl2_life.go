@@ -81,10 +81,6 @@ func checkEvents(running int, board []bool) int {
                     lastbox = thisbox
                 }
             }
-            // XXX: This is standin for passing board and coords to a func that toggles cells to liveness
-            if col > 1000000 {    // XXX
-                fmt.Printf("%v\n", board) // XXX
-            } // XXX
         /* case *sdl.KeyDownEvent:
             fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
                 t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat) */
