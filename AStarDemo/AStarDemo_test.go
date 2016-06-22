@@ -3,18 +3,21 @@ package main
 //import "fmt"
 import "testing"
 
- func TestItoXY(t *testing.T) {
+func TestCellxy(t *testing.T) {
+    c := Cell{i: 0}
     exX, exY := 0, 0
-    if x, y := ItoXY(0, 3); x != exX || y != exY {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", 0, x, y, exX, exY)
+    if x, y := c.xy(3); x != exX || y != exY {
+		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", c.i, x, y, exX, exY)
     }
+    c = Cell{i: 8}
     exX, exY = 2, 2
-    if x, y := ItoXY(8, 3); x != exX || y != exY {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", 8, x, y, exX, exY)
+    if x, y := c.xy(3); x != exX || y != exY {
+		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", c.i, x, y, exX, exY)
     }
+    c = Cell{i: 2}
     exX, exY = 0, 2
-    if x, y := ItoXY(2, 3); x != exX || y != exY {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", 2, x, y, exX, exY)
+    if x, y := c.xy(3); x != exX || y != exY {
+		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", c.i, x, y, exX, exY)
     }
 }
 
@@ -53,20 +56,21 @@ func TestManhattanDistance(t *testing.T) {
 
 func TestInformedManhattanDistance(t *testing.T) {
     // grid of 9 squares, buttom right to top left
-    if distance := InformedManhattanDistance(8, 0, 8, 3); distance != 4.008 {
-        // base position is the starting square
+    topleft := Cell{i: 0}
+    bottomright := Cell{i: 8}
+    northofstart := Cell{i: 5}
+    westofstart := Cell{i: 7}
+    topright := Cell{i: 2}
+    if distance := InformedManhattanDistance(bottomright, topleft, bottomright, 3); distance != 4.008 {
 		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 4.008", distance)
     }
-    if distance := InformedManhattanDistance(5, 0, 8, 3); distance != 3.006 {
-        // 1 north of starting square
+    if distance := InformedManhattanDistance(northofstart, topleft, bottomright, 3); distance != 3.006 {
 		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 3.006", distance)
     }
-    if distance := InformedManhattanDistance(7, 0, 8, 3); distance != 3.006 {
-        // 1 west of starting square
+    if distance := InformedManhattanDistance(westofstart, topleft, bottomright, 3); distance != 3.006 {
 		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 3.006", distance)
     }
-    if distance := InformedManhattanDistance(2, 0, 8, 3); distance != 2.004 {
-        // 1 west of starting square
+    if distance := InformedManhattanDistance(topright, topleft, bottomright, 3); distance != 2.004 {
 		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 2.004", distance)
     } 
 } 

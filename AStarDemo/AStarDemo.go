@@ -20,10 +20,15 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
-func ItoXY(i int, rowSize int) (int, int) {
+type Cell struct {
+    i int // 1d array index
+    h float64 // heuristic value, 0 is unset
+}
+
+func (c *Cell) xy(rowSize int) (int, int) {
     // Convert 1d slice indexes to 2d positions, (0, 0) in top left
-    x := i / rowSize
-    y := i % rowSize
+    x := c.i / rowSize
+    y := c.i % rowSize
     return x, y
 }
 
@@ -41,12 +46,12 @@ func ManhattanDistance(posX int, goalX int, posY int, goalY int) float64 {
     return dX + dY
 }
 
-func InformedManhattanDistance(pos int, goal int, start int, rowSize int) float64 {
+func InformedManhattanDistance(pos Cell, goal Cell, start Cell, rowSize int) float64 {
     // Use Manhattan distance, but fudge it by a tiny factor calculated with reference to the straight-line
     // path between start and finish points. This should break ties by preferring the more direct path.
-    goalX, goalY := ItoXY(goal, rowSize)
-    posX, posY := ItoXY(pos, rowSize)
-    startX, startY := ItoXY(start, rowSize)
+    goalX, goalY := goal.xy(rowSize)
+    startX, startY := start.xy(rowSize)
+    posX, posY := pos.xy(rowSize)
     heuristic := float64(ManhattanDistance(posX, goalX, posY, goalY))
     dx1 := posX - goalX
     dy1 := posY - goalY
@@ -56,16 +61,39 @@ func InformedManhattanDistance(pos int, goal int, start int, rowSize int) float6
     return heuristic + crossProduct*0.001
 }
 
-/* func PlotRoute(board []bool, creep int, goal int) []uint {
+func PlotRoute(board []bool, creep int, goal int) []uint {
     setSize := len(board)
 
+    // OPEN = priority queue containing START
+    openSet := make([]uint, 1, setSize) 
+    openSet := make([]Cell, 1, setSize)
+    openSet[0] = Cell{i: creep}
+    // openSet[0] = creep  // XXX priority queues, use container/heap of Cell structs
+
+    // CLOSED = empty set
     closedSet := make([]uint, 0, setSize) // the cells already evaluated (starts empty)
 
-    openSet := make([]uint, 1, setSize) // the cells waiting for evaluation (starts with start)
-    openSet[0] = creep
+    // current = remove lowest rank item from OPEN
 
+/* while lowest rank in OPEN is not the GOAL:
+  add current to CLOSED
+  for neighbors of current:
+    cost = g(current) + movementcost(current, neighbor)
+    if neighbor in OPEN and cost less than g(neighbor):
+      remove neighbor from OPEN, because new path is better
+    if neighbor in CLOSED and cost less than g(neighbor): ⁽²⁾
+      remove neighbor from CLOSED
+    if neighbor not in OPEN and neighbor not in CLOSED:
+      set g(neighbor) to cost
+      add neighbor to OPEN
+      s<
+      set neighbor's parent to current
 
-} */
+reconstruct reverse path from goal to start
+by following parent pointers
+*/
+    if len(closedSet) == 0 { return closedSet } else { return openSet }  // XXX placeholder to make it compile
+}
 
 
 func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_path []uint) {
@@ -124,7 +152,7 @@ func checkEvents(running int, board []bool) int {
             col := t.X / BBSZ
             row := t.Y / BBSZ
             edge_sz := WINDOWSIZE/BBSZ
-            life_cell := XYtoI(col, row, edge_sz)
+            life_cell := int32(XYtoI(int(col), int(row), int(edge_sz)))
             lastbox := int32(-1)
             thisbox := int32(-1)
             if t.State & sdl.Button(sdl.ButtonLMask()) == 1 {
