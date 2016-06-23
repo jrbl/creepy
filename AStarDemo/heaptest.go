@@ -31,7 +31,7 @@ func (h *CellHeap) Pop() interface{} {
     old := *h
     n := len(old)
     cell := old[n-1]
-    //cell.idx = -1 // for safety
+    cell.idx = -1 // for safety
     *h = old[0 : n-1]
     return cell
 }
@@ -54,17 +54,18 @@ func main() {
         heap.Push(&ch, &cell)
     }
     
-    // more debug printouts
+    // debug printout, raw heap refs
     for j := 0; j < 9; j += 1 {
-        fmt.Printf("%.5f:%d@%d\n", ch[j].h, ch[j].i, ch[j].idx)
+        fmt.Printf("[%d] i: %d, h: %.5f, idx: %d\n", j, ch[j].i, ch[j].h, ch[j].idx)
     }
 
-    // debug printout
-    fmt.Printf("DEBUG: %v\n", ch)
+    fmt.Printf("----\n")
 
     // pretty print (destructive)
+    counter := 0
     for ch.Len() > 0 {
         cell := heap.Pop(&ch).(*Cell)
-        fmt.Printf("%.5f:%d@%d\n", cell.h, cell.i, cell.idx)
+        fmt.Printf("[%d] i: %d, h: %.5f, idx: %d\n", counter, cell.i, cell.h, cell.idx)
+        counter += 1
     }
 }

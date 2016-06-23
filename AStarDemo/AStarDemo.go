@@ -8,8 +8,9 @@
 
 package main
 
+import "fmt"
 import "github.com/veandco/go-sdl2/sdl"
-import "math"
+import "github.com/jrbl/creepy/cell"
 import "math/rand"
 import "time"
 
@@ -20,79 +21,57 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
-type Cell struct {
-    i int // 1d array index
-    h float64 // heuristic value, 0 is unset
-}
-
-func (c *Cell) xy(rowSize int) (int, int) {
-    // Convert 1d slice indexes to 2d positions, (0, 0) in top left
-    x := c.i / rowSize
-    y := c.i % rowSize
-    return x, y
-}
-
 func XYtoI(x int, y int, rowSize int) int {
     // Convert 2d positions to 1d slice index
     return y * rowSize + x
 }
 
-func ManhattanDistance(posX int, goalX int, posY int, goalY int) float64 {
-    // Calculate the taxicab distance between two points
-    // D := 1 // D is an edge weighting
-    dX := math.Abs(float64(posX - goalX))
-    dY := math.Abs(float64(posY - goalY))
-    // return D * (dX + dY)
-    return dX + dY
-}
-
-func InformedManhattanDistance(pos Cell, goal Cell, start Cell, rowSize int) float64 {
-    // Use Manhattan distance, but fudge it by a tiny factor calculated with reference to the straight-line
-    // path between start and finish points. This should break ties by preferring the more direct path.
-    goalX, goalY := goal.xy(rowSize)
-    startX, startY := start.xy(rowSize)
-    posX, posY := pos.xy(rowSize)
-    heuristic := float64(ManhattanDistance(posX, goalX, posY, goalY))
-    dx1 := posX - goalX
-    dy1 := posY - goalY
-    dx2 := startX - goalX
-    dy2 := startY - goalY
-    crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
-    return heuristic + crossProduct*0.001
-}
-
-func PlotRoute(board []bool, creep int, goal int) []uint {
+func PlotRoute(board []bool, creep int, goal int) cell.Heap {
+//func PlotRoute(board []bool, creep int, goal int) []bool {
     setSize := len(board)
+    startPos := setSize - 1
+    goalPos := 0
+    rank := int(WINDOWSIZE/BBSZ)
+    goalCell := cell.Cell{I: goalPos}  // placeholder, not entered into heap until we find it
 
     // OPEN = priority queue containing START
-    openSet := make([]uint, 1, setSize) 
-    openSet := make([]Cell, 1, setSize)
-    openSet[0] = Cell{i: creep}
-    // openSet[0] = creep  // XXX priority queues, use container/heap of Cell structs
+    openSet := cell.NewHeap()
+    startCell := cell.Cell{I: startPos}
+    startCell.H = startCell.FudgeTaxiDistance(goalCell, startCell, rank)
+    openSet.Push(&startCell)
 
     // CLOSED = empty set
-    closedSet := make([]uint, 0, setSize) // the cells already evaluated (starts empty)
+    closedSet := cell.NewHeap() // cells already evaluated (starts empty)
 
-    // current = remove lowest rank item from OPEN
+    current := startCell
+    for current.I != goalCell.I {             // while lowest rank in OPEN is not the GOAL:
+        current := openSet.Pop().(*cell.Cell) // current = remove lowest rank item from OPEN
+        closedSet.Push(&current)              //  add current to CLOSED
+        neighbors := current.Neighbors(rank)
+        fmt.Printf("%d: ", current.I) // XXX
+        for pos := range neighbors {          //  for neighbors of current:
+            fmt.Printf("%d ", pos) // XXX
+        }
+        fmt.Printf("\n") // XXX
+    }
 
-/* while lowest rank in OPEN is not the GOAL:
-  add current to CLOSED
-  for neighbors of current:
-    cost = g(current) + movementcost(current, neighbor)
-    if neighbor in OPEN and cost less than g(neighbor):
-      remove neighbor from OPEN, because new path is better
-    if neighbor in CLOSED and cost less than g(neighbor): ⁽²⁾
-      remove neighbor from CLOSED
-    if neighbor not in OPEN and neighbor not in CLOSED:
-      set g(neighbor) to cost
-      add neighbor to OPEN
-      s<
-      set neighbor's parent to current
+//    cost = g(current) + movementcost(current, neighbor)
+//    if neighbor in OPEN and cost less than g(neighbor):
+//      remove neighbor from OPEN, because new path is better
+//    if neighbor in CLOSED and cost less than g(neighbor): ⁽²⁾
+//      remove neighbor from CLOSED
+//    if neighbor not in OPEN and neighbor not in CLOSED:
+//      set g(neighbor) to cost
+//      add neighbor to OPEN
+//      set priority queue rank to g(neighbor) + h(neighbor)
+//      set neighbor's parent to current
 
-reconstruct reverse path from goal to start
+/*reconstruct reverse path from goal to start
 by following parent pointers
 */
-    if len(closedSet) == 0 { return closedSet } else { return openSet }  // XXX placeholder to make it compile
+
+    fmt.Printf("[%d] i: %d, h: %.5f, idx: %d\n", -1, current.I, current.H, current.Idx)
+    if len(openSet) == 0 { return closedSet } else { return openSet }  // XXX placeholder to make it compile
 }
 
 
@@ -299,6 +278,7 @@ func main() {
     running = 1
     for running != -1 {
         running = checkEvents(running, life_board)
+        _ = PlotRoute(life_board, creep, goal)
         paintBoxes(surface, life_board, creep, goal, creep_path)
         window.UpdateSurface()
 
