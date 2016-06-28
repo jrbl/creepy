@@ -21,25 +21,6 @@ func TestCellxy(t *testing.T) {
     }
 }
 
-func TestXYtoI(t *testing.T) {
-    exI, x, y := 0, 0, 0 // top left
-    if i := XYtoI(x, y, 3); i != exI {
-        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
-    }
-    exI, x, y = 8, 2, 2 // bottom right
-    if i := XYtoI(x, y, 3); i != exI {
-        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
-    }
-    exI, x, y = 6, 0, 2 // bottom left
-    if i := XYtoI(x, y, 3); i != exI {
-        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
-    }
-    exI, x, y = 2, 2, 0 // top right
-    if i := XYtoI(x, y, 3); i != exI {
-        t.Errorf("Bad index calculation, (%d, %d)->%d, not %d", x, y, i, exI)
-    }
-}
-
 func TestManhattanDistance(t *testing.T) {
     // grid of 9 squares, bottom right to top left
     // best distance is 4: straight to an opposing corner, then across to the goal.
