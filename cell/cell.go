@@ -50,15 +50,15 @@ func (c *Cell) Neighbors(rank int) [8]int {
     n := 0
     neighbors := [8]int{}
     col, row := c.XY(rank)
-    for i := -1; i < 2; i += 1 {
-        for j := -1; j < 2; j += 1 {
+    for i := -1; i <= 1; i += 1 {
+        for j := -1; j <= 1; j += 1 {
             if i == 0 && j == 0 { continue }
             target_row := row + i
             target_col := col + j
             if target_row < 0 { target_row = -1 }              // stop at edge
             if target_col < 0 { target_col = -1 }              // stop at edge
-            if target_row >= rank { target_row = (rank - 1) }  // stop at edge
-            if target_col >= rank { target_col = (rank - 1) }  // stop at edge
+            if target_row >= rank { target_row = -1 }          // stop at edge
+            if target_col >= rank { target_col = -1 }          // stop at edge
             neighbors[n] = XYtoI(target_col, target_row, rank)
             n += 1
         }

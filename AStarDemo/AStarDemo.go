@@ -8,7 +8,7 @@
 
 package main
 
-import "fmt"
+//import "fmt"
 import "github.com/veandco/go-sdl2/sdl"
 import "github.com/jrbl/creepy/cell"
 import "math/rand"
@@ -21,57 +21,59 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
-func XYtoI(x int, y int, rowSize int) int {
-    // Convert 2d positions to 1d slice index
-    return y * rowSize + x
-}
-
-func PlotRoute(board []bool, creep int, goal int) cell.Heap {
-//func PlotRoute(board []bool, creep int, goal int) []bool {
-    setSize := len(board)
-    startPos := setSize - 1
-    goalPos := 0
+func PlotRoute(board []bool, creep int, goal int) { // cell.CHeap {
+    startPos := len(board) - 1
     rank := int(WINDOWSIZE/BBSZ)
-    goalCell := cell.Cell{I: goalPos}  // placeholder, not entered into heap until we find it
+    goalCell := cell.Cell{I: 0}  // placeholder, not entered into heap until we find it
 
-    // OPEN = priority queue containing START
     openSet := cell.NewHeap()
     startCell := cell.Cell{I: startPos}
     startCell.H = startCell.FudgeTaxiDistance(goalCell, startCell, rank)
-    openSet.Push(&startCell)
+    openSet.Add(&startCell)
 
-    // CLOSED = empty set
     closedSet := cell.NewHeap() // cells already evaluated (starts empty)
 
-    current := startCell
+    current := openSet.Remove()               // startCell, because nothing else present
     for current.I != goalCell.I {             // while lowest rank in OPEN is not the GOAL:
-        current := openSet.Pop().(*cell.Cell) // current = remove lowest rank item from OPEN
-        closedSet.Push(&current)              //  add current to CLOSED
+        closedSet.Add(current)
         neighbors := current.Neighbors(rank)
-        fmt.Printf("%d: ", current.I) // XXX
         for pos := range neighbors {          //  for neighbors of current:
-            fmt.Printf("%d ", pos) // XXX
+            if pos == -1 {
+                // Can't fall off the edge of the world.
+                continue
+            }
+            // figure out if neighbor is in open, closed, or neither
+            _, openCellref := openSet.Search(pos)
+            _, closedCellref := closedSet.Search(pos)
+            if openCellref != nil {  // if it's in open set, recalculate cost estimate if necessary
+                costEstimate := float64(current.H) + openCellref.FudgeTaxiDistance(goalCell, startCell, rank)
+                if openCellref.H > costEstimate {
+                    openSet.Revalue(openCellref, costEstimate)
+                    // TODO: if tracking parents, update parent of openCellref to current
+                }
+            } else if closedCellref != nil { // if it's in the closed set, move it to open set if necessary
+                costEstimate := float64(current.H) + closedCellref.FudgeTaxiDistance(goalCell, startCell, rank)
+                if closedCellref.H > costEstimate {
+                    closedCellref = closedSet.Unlink(closedCellref) // remove from closedSet
+                    closedCellref.H = costEstimate  // update H to costEstimate, which is better
+                    openSet.Add(closedCellref)  // move it back over to the openSet with new estimate
+                    // TODO: if tracking parents, update parent of closedCellref to current
+                }
+            } else { // neither in open set or closed set, so add it as new
+                pCell := cell.Cell{I: pos}
+                // cost = g(current) + movementcost(current, neighbor)
+                cost := float64(current.H) + pCell.FudgeTaxiDistance(goalCell, startCell, rank) 
+                pCell.H = cost
+                openSet.Add(&pCell)
+                // TODO: if tracking parents, set parent of pCell to current
+            }
+
         }
-        fmt.Printf("\n") // XXX
+        current = openSet.Remove()           // current = remove lowest rank item from OPEN
     }
-
-//    cost = g(current) + movementcost(current, neighbor)
-//    if neighbor in OPEN and cost less than g(neighbor):
-//      remove neighbor from OPEN, because new path is better
-//    if neighbor in CLOSED and cost less than g(neighbor): ⁽²⁾
-//      remove neighbor from CLOSED
-//    if neighbor not in OPEN and neighbor not in CLOSED:
-//      set g(neighbor) to cost
-//      add neighbor to OPEN
-//      set priority queue rank to g(neighbor) + h(neighbor)
-//      set neighbor's parent to current
-
-/*reconstruct reverse path from goal to start
-by following parent pointers
-*/
-
-    fmt.Printf("[%d] i: %d, h: %.5f, idx: %d\n", -1, current.I, current.H, current.Idx)
-    if len(openSet) == 0 { return closedSet } else { return openSet }  // XXX placeholder to make it compile
+    /*reconstruct reverse path from goal to start
+    by following parent pointers
+    */
 }
 
 
@@ -131,7 +133,7 @@ func checkEvents(running int, board []bool) int {
             col := t.X / BBSZ
             row := t.Y / BBSZ
             edge_sz := WINDOWSIZE/BBSZ
-            life_cell := int32(XYtoI(int(col), int(row), int(edge_sz)))
+            life_cell := int32(cell.XYtoI(int(col), int(row), int(edge_sz)))
             lastbox := int32(-1)
             thisbox := int32(-1)
             if t.State & sdl.Button(sdl.ButtonLMask()) == 1 {
@@ -278,7 +280,7 @@ func main() {
     running = 1
     for running != -1 {
         running = checkEvents(running, life_board)
-        _ = PlotRoute(life_board, creep, goal)
+        PlotRoute(life_board, creep, goal) // TODO: return a route value and use it here
         paintBoxes(surface, life_board, creep, goal, creep_path)
         window.UpdateSurface()
 

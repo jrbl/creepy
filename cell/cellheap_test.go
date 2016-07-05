@@ -48,6 +48,38 @@ func TestHeapRemoves(t *testing.T) {
     }
 }
 
+func TestHeapSearch(t *testing.T) {
+    // 1, 0, 2
+    ch := setUpMinHeap()
+    if j, _ := ch.Search(2); j != 2 {
+        t.Errorf("Heap search failed, c.I=2 at ch[%d] not ch[2].", j)
+    }
+    if j, _ := ch.Search(0); j != 1 {
+        t.Errorf("Heap search failed, c.I=0 at ch[%d] not ch[1].", j)
+    }
+    if j, _ := ch.Search(1); j != 0 {
+        t.Errorf("Heap search failed, c.I=1 at ch[%d] not ch[0].", j)
+    }
+    if j, _ := ch.Search(9); j != -1 {
+        t.Errorf("Heap search failed, c.I=9 at ch[%d], should be missing.", j)
+    }
+}
+
+func TestHeapUnlink(t *testing.T) {
+    ch := setUpMinHeap()
+    _, cell := ch.Search(0)
+    // confirm unlinking cell returns cell asked for
+    if cell = ch.Unlink(cell); cell.I == 0 && cell.H == 0.001 {
+        t.Errorf("Heap unlink is fishy: c.I=%d != %d, c.H=%.4f != %.4f", cell.I, 0, cell.H, 0.001)
+    }
+    // confirm unlinking removes cell from heap
+    for _, c := range ch {
+        if c.I == 0 {
+            t.Errorf("Heap unlink failed to remove 0 from heap, found at %d.", c.Idx)
+        }
+    }
+}
+
 func TestHeapRevalue(t *testing.T) {
     ch := setUpMinHeap()
     i := int(0)

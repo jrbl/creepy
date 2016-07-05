@@ -56,8 +56,26 @@ func TestFudgeTaxiDistance(t *testing.T) {
     //             straight-line paths. (Work them out by hand first.)
 }
 
-func testNeighbors(t *testing.T) {
-    // TODO neighbor calculation tests
+func TestNeighbors(t *testing.T) {
+    tl := Cell{I: 0} // tl is top left of 3x3 grid
+    c := Cell{I: 4}  // c is center of 3x3 grid
+    br := Cell{I: 8} // br is bottom right of 3x3 grid
+    rank := 3
+    ns := c.Neighbors(rank)
+    expect := [8]int{0, 1, 2, 3, 5, 6, 7, 8}
+    if ns != expect {
+        t.Errorf("Incorrect neighbor array %v for cell %d, expected %v", ns, c.I, expect)
+    }
+    ns = tl.Neighbors(rank)
+    expect = [8]int{-1, -1, -1, -1, 1, -1, 3, 4}
+    if ns != expect {
+        t.Errorf("Incorrect neighbor array %v for cell %d, expected %v", ns, tl.I, expect)
+    }
+    ns = br.Neighbors(rank)
+    expect = [8]int{4, 5, -1, 7, -1, -1, -1, -1}
+    if ns != expect {
+        t.Errorf("Incorrect neighbor array %v for cell %d, expected %v", ns, br.I, expect)
+    }
 }
 
 func TestXYtoI(t *testing.T) {

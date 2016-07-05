@@ -45,7 +45,30 @@ func (h *CHeap) Remove() *Cell {
 func (h *CHeap) Revalue(c *Cell, new_h float64) {
     h.update(c, c.I, new_h)
 }
-// TODO: need test for that also
+
+// Unlink uses heap implementation to remove Cell c from CHeap h in log2*N time.
+// Returns the cell requested
+func (h *CHeap) Unlink(c *Cell) *Cell {
+    hValue := c.H
+    h.Revalue(c, -99999.99999)
+    cPopped := h.Remove()
+    cPopped.H = hValue
+    cPopped.Idx = -1 // congruent with Pop() above
+    return cPopped
+}
+
+// Search linearly scans the structure of the heap, looking for the
+// first instance of i to appear in some Cell.I.
+// Returns j, the Cell's linear index, and the Cell.
+// In a properly valued heap, j == Cell.Idx
+func (h CHeap) Search(i int) (int, *Cell) {
+    for j := 0; j < len(h); j += 1 {
+        if h[j].I == i {
+            return j, h[j]
+        }
+    }
+    return -1, nil
+}
 
 func NewHeap() CHeap {
     ch := make(CHeap, 0)
