@@ -8,7 +8,7 @@
 
 package main
 
-//import "fmt"
+import "fmt"
 import "github.com/veandco/go-sdl2/sdl"
 import "github.com/jrbl/creepy/cell"
 import "math/rand"
@@ -21,10 +21,10 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
-func PlotRoute(board []bool, creep int, goal int) { // cell.CHeap {
-    startPos := len(board) - 1
+func PlotRoute(board []bool, creep int, goal int) []int {
+    startPos := len(board) - 1 // hardcoded start is end of board
     rank := int(WINDOWSIZE/BBSZ)
-    goalCell := cell.Cell{I: 0}  // placeholder, not entered into heap until we find it
+    goalCell := cell.Cell{I: 0}  // placeholder, not entered into heap until we find it (hardcoded end is start of board)
 
     openSet := cell.NewHeap()
     startCell := cell.Cell{I: startPos}
@@ -33,23 +33,26 @@ func PlotRoute(board []bool, creep int, goal int) { // cell.CHeap {
 
     closedSet := cell.NewHeap() // cells already evaluated (starts empty)
 
+    parents := make([]int, len(board)) // track how we get to each cell on our path
+    parents[startPos] = -1  // special flag value so we know where to stop traversal
+
     current := openSet.Remove()               // startCell, because nothing else present
     for current.I != goalCell.I {             // while lowest rank in OPEN is not the GOAL:
         closedSet.Add(current)
         neighbors := current.Neighbors(rank)
-        for pos := range neighbors {          //  for neighbors of current:
+        for _, pos := range neighbors {          //  for neighbors of current:
             if pos == -1 {
-                // Can't fall off the edge of the world.
-                continue
+                continue  // Don't fall off the edge of the world.
             }
             // figure out if neighbor is in open, closed, or neither
             _, openCellref := openSet.Search(pos)
             _, closedCellref := closedSet.Search(pos)
+
             if openCellref != nil {  // if it's in open set, recalculate cost estimate if necessary
                 costEstimate := float64(current.H) + openCellref.FudgeTaxiDistance(goalCell, startCell, rank)
                 if openCellref.H > costEstimate {
                     openSet.Revalue(openCellref, costEstimate)
-                    // TODO: if tracking parents, update parent of openCellref to current
+                    parents[openCellref.I] = current.I // update parent of openCellref to current
                 }
             } else if closedCellref != nil { // if it's in the closed set, move it to open set if necessary
                 costEstimate := float64(current.H) + closedCellref.FudgeTaxiDistance(goalCell, startCell, rank)
@@ -57,7 +60,7 @@ func PlotRoute(board []bool, creep int, goal int) { // cell.CHeap {
                     closedCellref = closedSet.Unlink(closedCellref) // remove from closedSet
                     closedCellref.H = costEstimate  // update H to costEstimate, which is better
                     openSet.Add(closedCellref)  // move it back over to the openSet with new estimate
-                    // TODO: if tracking parents, update parent of closedCellref to current
+                    parents[closedCellref.I] = current.I  // update parent of closedCellref to current
                 }
             } else { // neither in open set or closed set, so add it as new
                 pCell := cell.Cell{I: pos}
@@ -65,19 +68,40 @@ func PlotRoute(board []bool, creep int, goal int) { // cell.CHeap {
                 cost := float64(current.H) + pCell.FudgeTaxiDistance(goalCell, startCell, rank) 
                 pCell.H = cost
                 openSet.Add(&pCell)
-                // TODO: if tracking parents, set parent of pCell to current
+                parents[pCell.I] = current.I  // set parent of pCell to current
             }
-
         }
         current = openSet.Remove()           // current = remove lowest rank item from OPEN
     }
-    /*reconstruct reverse path from goal to start
-    by following parent pointers
-    */
+
+    /*reconstruct reverse path from goal to start by following parent pointers */
+    path := make([]int, len(board))
+    for i := range path {
+        path[i] = -2  // intentionally bad value to indicate death zone
+    }
+    // path is filled with value -2
+    i := 0
+    j := 0
+    for {
+        path[i] = parents[j]
+        if path[i] == -1 {
+            break
+        }
+        j = path[i]
+        i += 1
+    }
+    // path contains route from 0 to startPos in cells 0:i
+    newPath := make([]int, i)
+    last := i-1
+    for j := last; j >= 0; j -= 1 {
+        newPath[last - j] = path[j]
+    }
+    // newPath contains the reverse of the initialized elements in path
+    return newPath
 }
 
 
-func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_path []uint) {
+func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_path []int) {
     var x int32
     y := int32(0)
     boxcounter := 0
@@ -273,14 +297,14 @@ func main() {
 
     creep := int(field_size-1) // TODO: tunable creep entry?
     goal := 0 // TODO: tunable creep exit?
-    creep_path := make([]uint, field_size)
 
     // Draw stuff and deal with events
     // TODO: running states -1,0,1 should probably be some kind of enum. XXX TODO: research enums
     running = 1
     for running != -1 {
         running = checkEvents(running, life_board)
-        PlotRoute(life_board, creep, goal) // TODO: return a route value and use it here
+        creep_path := PlotRoute(life_board, creep, goal)
+        fmt.Println(creep_path)
         paintBoxes(surface, life_board, creep, goal, creep_path)
         window.UpdateSurface()
 
