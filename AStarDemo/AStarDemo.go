@@ -101,22 +101,47 @@ func PlotRoute(board []bool, creep int, goal int) []int {
 }
 
 
+func getPallette(s *sdl.Surface) (m map[string]uint32) {
+    m = make(map[string]uint32)
+    // colors by http://tools.medialab.sciences-po.fr/iwanthue/
+    m["RED"] = sdl.MapRGB(s.Format, 185, 78, 69) 
+    m["GREEN"] = sdl.MapRGB(s.Format, 86, 174, 108)
+    m["VIOLET"] = sdl.MapRGB(s.Format, 181, 79, 144)
+    m["YELLOW"] = sdl.MapRGB(s.Format, 173, 153, 60)
+    m["BLUE"] = sdl.MapRGB(s.Format, 112, 102, 188)
+    m["GRAY"] = 0x1f1f1f00
+    return
+}
+
 func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_path []int) {
     var x int32
     y := int32(0)
     boxcounter := 0
 
+    colors := getPallette(surface)
+
     board[creep] = false
     board[goal] = false
     if len(creep_path) > 30000 { // impossible condition to avoid errors from unused creep_path XXX
-        board[creep] = false
+        return
     } // XXX
 
+    // todo replace nested loops with for loop to len of board, calculate rects from box indices
+    // todo then another loop can use those rect calculations to colorize the path, or whatever else
     for y+BBSZ <= WINDOWSIZE {
         x = int32(0)
         for ; x+BBSZ <= WINDOWSIZE; {
             rect := sdl.Rect{x, y, BBSZ, BBSZ}
             surface.FillRect(&rect, 0x00000000)
+
+            // DEBUG block to help me figure out how to map these
+            // DEBUG this still isn't right.
+            calc_x := (int32(boxcounter) * BBSZ) % WINDOWSIZE
+            calc_y := (int32(boxcounter) / WINDOWSIZE) * BBSZ
+            if x != calc_x || y != calc_y {
+                fmt.Printf("iterated rect is: (%d, %d, %d, %d); calculated is (%d, %d, %d, %d)\n",
+                    x, y, BBSZ, BBSZ, calc_x, calc_y, BBSZ, BBSZ)
+            }
 
             // TODO: take these inner rect objects and put them onto a data structure so we
             //       can do things with them later. Like A* search, or G.O.L.
@@ -126,13 +151,15 @@ func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_p
             //        http://tools.medialab.sciences-po.fr/iwanthue/ and figure out why the creep's not blue, the goal isn't green, and 
             //        the walls aren't gold.
             if boxcounter == creep {
-                surface.FillRect(&rect, 0x3c74fe00)
+                surface.FillRect(&rect, colors["GREEN"])
             } else if boxcounter == goal {
-                surface.FillRect(&rect, 0x2edfb400)
+                surface.FillRect(&rect, colors["RED"])
             } else if board[boxcounter] {
-                surface.FillRect(&rect, 0xb2af0000)
+                surface.FillRect(&rect, colors["YELLOW"])
+            } else if boxcounter < len(creep_path) && creep_path[boxcounter] != -2 {
+                surface.FillRect(&rect, colors["BLUE"])
             } else {
-                surface.FillRect(&rect, 0x1f1f1f00)
+                surface.FillRect(&rect, colors["GRAY"])
             }
 
             x += BBSZ
