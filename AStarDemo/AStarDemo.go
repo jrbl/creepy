@@ -8,7 +8,6 @@
 
 package main
 
-import "fmt"
 import "github.com/veandco/go-sdl2/sdl"
 import "github.com/jrbl/creepy/cell"
 import "math/rand"
@@ -114,60 +113,46 @@ func getPallette(s *sdl.Surface) (m map[string]uint32) {
 }
 
 func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_path []int) {
-    var x int32
-    y := int32(0)
-    boxcounter := 0
-
-    colors := getPallette(surface)
 
     board[creep] = false
     board[goal] = false
-    if len(creep_path) > 30000 { // impossible condition to avoid errors from unused creep_path XXX
-        return
-    } // XXX
 
-    // todo replace nested loops with for loop to len of board, calculate rects from box indices
-    // todo then another loop can use those rect calculations to colorize the path, or whatever else
-    for y+BBSZ <= WINDOWSIZE {
-        x = int32(0)
-        for ; x+BBSZ <= WINDOWSIZE; {
-            rect := sdl.Rect{x, y, BBSZ, BBSZ}
-            surface.FillRect(&rect, 0x00000000)
-
-            // DEBUG block to help me figure out how to map these
-            // DEBUG this still isn't right.
-            calc_x := (int32(boxcounter) * BBSZ) % WINDOWSIZE
-            calc_y := (int32(boxcounter) / WINDOWSIZE) * BBSZ
-            if x != calc_x || y != calc_y {
-                fmt.Printf("iterated rect is: (%d, %d, %d, %d); calculated is (%d, %d, %d, %d)\n",
-                    x, y, BBSZ, BBSZ, calc_x, calc_y, BBSZ, BBSZ)
-            }
-
-            // TODO: take these inner rect objects and put them onto a data structure so we
-            //       can do things with them later. Like A* search, or G.O.L.
-            //       In the meantime, consult externally defined data structure for liveness
-            rect = sdl.Rect{x+BORDER, y+BORDER, CBSZ, CBSZ}
-            // TODO: These colors are fine to work with, but they don't look anything like I expect. Look at the implementation, and at 
-            //        http://tools.medialab.sciences-po.fr/iwanthue/ and figure out why the creep's not blue, the goal isn't green, and 
-            //        the walls aren't gold.
-            if boxcounter == creep {
-                surface.FillRect(&rect, colors["GREEN"])
-            } else if boxcounter == goal {
-                surface.FillRect(&rect, colors["RED"])
-            } else if board[boxcounter] {
-                surface.FillRect(&rect, colors["YELLOW"])
-            } else if boxcounter < len(creep_path) && creep_path[boxcounter] != -2 {
-                surface.FillRect(&rect, colors["BLUE"])
-            } else {
-                surface.FillRect(&rect, colors["GRAY"])
-            }
-
-            x += BBSZ
-            boxcounter += 1
-        }
-        y += BBSZ
+    rank := WINDOWSIZE/BBSZ
+    type coords struct { x, y, w, h int32 }
+    coordsFunc := func (i int) coords {
+        return coords{(int32(i) % rank) * BBSZ, (int32(i) / rank) * BBSZ, BBSZ, BBSZ}
     }
 
+    colors := getPallette(surface)
+    colorFunc := func (i int) uint32 {
+        if i == creep {
+            return colors["GREEN"]
+        } else if  i == goal {
+            return colors["RED"]
+        } else if board[i] {
+            return colors["YELLOW"]
+        } else {
+            return colors["GRAY"]
+        }
+    }
+
+    // Draw the field, start and end, and live cells
+    for i := 0; i < len(board); i += 1 {
+        cs := coordsFunc(i)
+        /* draw the black bounding box */
+        rect := sdl.Rect{cs.x, cs.y, cs.w, cs.h}
+        surface.FillRect(&rect, 0x00000000)
+        /* draw the cell box */
+        rect = sdl.Rect{cs.x+BORDER, cs.y+BORDER, CBSZ, CBSZ}
+        surface.FillRect(&rect, colorFunc(i))
+    }
+
+    // Draw the creep path
+    for _, j := range creep_path {
+        cs := coordsFunc(j)
+        rect := sdl.Rect{cs.x+BORDER, cs.y+BORDER, CBSZ, CBSZ}
+        surface.FillRect(&rect, colors["BLUE"])
+    }
 }
 
 func lightUpBoxIn(box int, board []bool) {
@@ -331,7 +316,6 @@ func main() {
     for running != -1 {
         running = checkEvents(running, life_board)
         creep_path := PlotRoute(life_board, creep, goal)
-        fmt.Println(creep_path)
         paintBoxes(surface, life_board, creep, goal, creep_path)
         window.UpdateSurface()
 
