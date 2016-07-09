@@ -49,13 +49,13 @@ func PlotRoute(board []bool, creep int, goal int) []int {
             _, closedCellref := closedSet.Search(pos)
 
             if openCellref != nil {  // if it's in open set, recalculate cost estimate if necessary
-                costEstimate := float64(current.H) + openCellref.FudgeTaxiDistance(goalCell, startCell, rank)
+                costEstimate := float64(current.H) + openCellref.MoveCost(goalCell, startCell, rank, board)
                 if openCellref.H > costEstimate {
                     openSet.Revalue(openCellref, costEstimate)
                     parents[openCellref.I] = current.I // update parent of openCellref to current
                 }
             } else if closedCellref != nil { // if it's in the closed set, move it to open set if necessary
-                costEstimate := float64(current.H) + closedCellref.FudgeTaxiDistance(goalCell, startCell, rank)
+                costEstimate := float64(current.H) + closedCellref.MoveCost(goalCell, startCell, rank, board)
                 if closedCellref.H > costEstimate {
                     closedCellref = closedSet.Unlink(closedCellref) // remove from closedSet
                     closedCellref.H = costEstimate  // update H to costEstimate, which is better
@@ -75,29 +75,34 @@ func PlotRoute(board []bool, creep int, goal int) []int {
     }
 
     /*reconstruct reverse path from goal to start by following parent pointers */
-    path := make([]int, len(board))
-    for i := range path {
-        path[i] = -2  // intentionally bad value to indicate death zone
-    }
-    // path is filled with value -2
-    i := 0
-    j := 0
-    for {
-        path[i] = parents[j]
-        if path[i] == -1 {
-            break
-        }
-        j = path[i]
-        i += 1
+    //path := make([]int, len(board))
+    path := make([]int, 0, len(board))
+    //for i := range path {
+    //    path[i] = -2  // intentionally bad value to indicate death zone
+    //}
+    // Invariant: path is filled with value -2
+    //i := 0
+    //j := 0
+    //for {
+    //    path[i] = parents[j]
+    //    if path[i] == -1 {
+    //        break
+    //    }
+    //    j = path[i]
+    //    i += 1
+    //}
+    for i := 0; parents[i] != -1; i = parents[i] {
+        path = append(path, parents[i])
     }
     // path contains route from 0 to startPos in cells 0:i
-    newPath := make([]int, i)
-    last := i-1
-    for j := last; j >= 0; j -= 1 {
-        newPath[last - j] = path[j]
-    }
+    //newPath := make([]int, i)
+    //last := i-1
+    //for j := last; j >= 0; j -= 1 {
+    //    newPath[last - j] = path[j]
+    //}
     // newPath contains the reverse of the initialized elements in path
-    return newPath
+    //return newPath
+    return path
 }
 
 
