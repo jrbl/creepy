@@ -20,6 +20,7 @@ const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
+// TODO(jrbl): unit tests, separate module
 func PlotRoute(board []bool, creep int, goal int) []int {
     startPos := len(board) - 1 // hardcoded start is end of board
     rank := int(WINDOWSIZE/BBSZ)
@@ -64,7 +65,7 @@ func PlotRoute(board []bool, creep int, goal int) []int {
             } else { // neither in open set or closed set, so add it as new
                 pCell := cell.Cell{I: pos}
                 // cost = g(current) + movementcost(current, neighbor)
-                cost := float64(current.H) + pCell.FudgeTaxiDistance(goalCell, startCell, rank) 
+                cost := float64(current.H) + pCell.MoveCost(goalCell, startCell, rank, board) 
                 pCell.H = cost
                 openSet.Add(&pCell)
                 parents[pCell.I] = current.I  // set parent of pCell to current
@@ -100,6 +101,7 @@ func PlotRoute(board []bool, creep int, goal int) []int {
 }
 
 
+// TODO(jrbl): all this drawing stuff to separate module
 func getPallette(s *sdl.Surface) (m map[string]uint32) {
     m = make(map[string]uint32)
     // colors by http://tools.medialab.sciences-po.fr/iwanthue/

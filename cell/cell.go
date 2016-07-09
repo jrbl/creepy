@@ -30,6 +30,23 @@ func (c *Cell)  TaxiDistance(goal Cell, rank int) float64 {
     return dX + dY
 }
 
+// Like FudgeTaxiDistance, but live cells are way too expensive (because eventually they kill us)
+func (c *Cell) MoveCost(goal Cell, start Cell, rank int, board []bool) float64 {
+    if board[c.I] {
+        return float64(9e9)
+    }
+    goalX, goalY := goal.XY(rank)
+    startX, startY := start.XY(rank)
+    posX, posY := c.XY(rank)
+    heuristic := c.TaxiDistance(goal, rank)
+    dx1 := posX - goalX
+    dy1 := posY - goalY
+    dx2 := startX - goalX
+    dy2 := startY - goalY
+    crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
+    return heuristic + crossProduct*0.001
+}
+
 // TaxiDistance, plus a tiny fudge-factor calculated from deviation from straight line path
 func (c *Cell) FudgeTaxiDistance(goal Cell, start Cell, rank int) float64 {
     goalX, goalY := goal.XY(rank)
