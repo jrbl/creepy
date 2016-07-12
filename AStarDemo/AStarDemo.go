@@ -1,15 +1,11 @@
 // A* Demo:
-// 
-// Todo: Plop a purple dot in lower-left corner, and then plop and green dot in upper right.
-//       Implement A* search s.t. the purple dot can plot a course to the green dot around all
-//       the yellow trash. Draw the course in white.
-//
-// TODO XXX TODO
 
 package main
 
+import "fmt"
 import "github.com/veandco/go-sdl2/sdl"
 import "github.com/jrbl/creepy/cell"
+import "math"
 import "math/rand"
 import "time"
 
@@ -18,6 +14,50 @@ const WINDOWSIZE = 720 // TODO: query for max y and make biggest square possible
 const BBSZ = int32(6) // borderbox size: 720/6 = 120, giving 14400 box grid
 const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
+
+
+// Distance gives the geometric distance between two points on the coordinate plane
+func distance(ax, ay, bx, by int) float64 {
+    //    math.Sqrt( (bx - ax)**2 - (by - ay)**2 )
+    return math.Sqrt( math.Pow(bx - ax, 2), math.Pow(by - ay, 2) )
+    
+}
+
+// validateCells confirms that every cell in cs has an .I that fits in board
+func validateCells(cs []cell.Cell, rank int) bool {
+    val := true
+    for _, c := range cs {
+        if c.I < 0 || c.I >= rank*rank {
+            val = false
+        }
+    }
+    return val
+}
+
+// MoveCost uses Taxidistance plus the calculation of deviation from a straight-line path to calculate 
+// movement cost from a particular cell c to goal. Makes cells which evaluate to True on board effectively
+// infinite in cost.
+func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
+    if !validateCells([]cell.Cell{c, goal, start}, rank)  { panic("bad cell bounds") }
+    if board[c.I] { return float64(9e9) }
+    posX, posY := c.XY(rank)
+    goalX, goalY := goal.XY(rank)
+    startX, startY := start.XY(rank)
+    fmt.Println("p", c.I, ":", posX, posY)
+    fmt.Println("g", goal.I, ":", goalX, goalY)
+    fmt.Println("s", start.I, ":", startX, startY)
+    dx1 := posX - goalX
+    dy1 := posY - goalY
+    dx2 := startX - goalX
+    dy2 := startY - goalY
+    fmt.Println("sums", dx1, dy1, dx2, dy2)
+    crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
+    // Taxidistance is an inadmissable heuristic, because it badly overestimate costs in case where
+    // we're allowed to make diagonal moves. TODO(jrbl): and use geometric distance 
+    //heuristic := 0.25 * c.TaxiDistance(goal, rank)
+    //return heuristic + crossProduct*0.001
+    return crossProduct
+}
 
 
 // TODO(jrbl): unit tests, separate module
@@ -36,6 +76,8 @@ func PlotRoute(board []bool, creep int, goal int) []int {
     parents := make([]int, len(board)) // track how we get to each cell on our path
     parents[startPos] = -1  // special flag value so we know where to stop traversal
 
+    moveCost := func (c cell.Cell) float64 { return MoveCost(c, goalCell, startCell, rank, board) }
+
     current := openSet.Remove()               // startCell, because nothing else present
     for current.I != goalCell.I {             // while lowest rank in OPEN is not the GOAL:
         closedSet.Add(current)
@@ -49,13 +91,13 @@ func PlotRoute(board []bool, creep int, goal int) []int {
             _, closedCellref := closedSet.Search(pos)
 
             if openCellref != nil {  // if it's in open set, recalculate cost estimate if necessary
-                costEstimate := float64(current.H) + openCellref.MoveCost(goalCell, startCell, rank, board)
+                costEstimate := float64(current.H) + moveCost(*openCellref)
                 if openCellref.H > costEstimate {
                     openSet.Revalue(openCellref, costEstimate)
                     parents[openCellref.I] = current.I // update parent of openCellref to current
                 }
             } else if closedCellref != nil { // if it's in the closed set, move it to open set if necessary
-                costEstimate := float64(current.H) + closedCellref.MoveCost(goalCell, startCell, rank, board)
+                costEstimate := float64(current.H) + moveCost(*closedCellref)
                 if closedCellref.H > costEstimate {
                     closedCellref = closedSet.Unlink(closedCellref) // remove from closedSet
                     closedCellref.H = costEstimate  // update H to costEstimate, which is better
@@ -65,7 +107,7 @@ func PlotRoute(board []bool, creep int, goal int) []int {
             } else { // neither in open set or closed set, so add it as new
                 pCell := cell.Cell{I: pos}
                 // cost = g(current) + movementcost(current, neighbor)
-                cost := float64(current.H) + pCell.MoveCost(goalCell, startCell, rank, board) 
+                cost := float64(current.H) + moveCost(pCell)
                 pCell.H = cost
                 openSet.Add(&pCell)
                 parents[pCell.I] = current.I  // set parent of pCell to current
@@ -75,33 +117,10 @@ func PlotRoute(board []bool, creep int, goal int) []int {
     }
 
     /*reconstruct reverse path from goal to start by following parent pointers */
-    //path := make([]int, len(board))
     path := make([]int, 0, len(board))
-    //for i := range path {
-    //    path[i] = -2  // intentionally bad value to indicate death zone
-    //}
-    // Invariant: path is filled with value -2
-    //i := 0
-    //j := 0
-    //for {
-    //    path[i] = parents[j]
-    //    if path[i] == -1 {
-    //        break
-    //    }
-    //    j = path[i]
-    //    i += 1
-    //}
     for i := 0; parents[i] != -1; i = parents[i] {
         path = append(path, parents[i])
     }
-    // path contains route from 0 to startPos in cells 0:i
-    //newPath := make([]int, i)
-    //last := i-1
-    //for j := last; j >= 0; j -= 1 {
-    //    newPath[last - j] = path[j]
-    //}
-    // newPath contains the reverse of the initialized elements in path
-    //return newPath
     return path
 }
 

@@ -19,6 +19,32 @@ func TestXY(t *testing.T) {
     }
 }
 
+func TestTaxiDistance1x1(t *testing.T) {
+    testBoardRank := 1
+    a := Cell{I: 0}
+    b := Cell{I: 0}
+    if x := a.TaxiDistance(b, testBoardRank); x != 0.0 {
+        t.Errorf("Degenerate board 1x1 calculating TaxiDistance incorrectly. %.4f != 0", x)
+    }
+}
+
+func TestTaxiDistance2x2(t *testing.T) {
+    testBoardRank := 2
+    a := Cell{I: 0}
+    b := Cell{I: 3}
+    if x := a.TaxiDistance(b, testBoardRank); x != 2.0 {
+        t.Errorf("Degenerate board 2x2 calculating TaxiDistance incorrectly. %.4f != 2", x)
+    }
+    a.I = 1
+    if x := a.TaxiDistance(b, testBoardRank); x != 1.0 {
+        t.Errorf("Degenerate board 2x2 calculating TaxiDistance incorrectly. %.4f != 1", x)
+    }
+    a.I = 2
+    if x := a.TaxiDistance(b, testBoardRank); x != 1.0 {
+        t.Errorf("Degenerate board 2x2 calculating TaxiDistance incorrectly. %.4f != 1", x)
+    }
+}
+
 func TestTaxiDistance(t *testing.T) {
     testBoardRank := 7
     a := Cell{I: 0}

@@ -1,60 +1,97 @@
 package main
 
-//import "fmt"
+import "fmt"
+import "github.com/jrbl/creepy/cell"
 import "testing"
 
-func TestCellxy(t *testing.T) {
-    c := Cell{i: 0}
-    exX, exY := 0, 0
-    if x, y := c.xy(3); x != exX || y != exY {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", c.i, x, y, exX, exY)
+
+func setUp(size int) (int, []bool) {
+    fmt.Println("Setting up", size)
+    return size, make([]bool, size*size)
+}
+
+// [.] and [*]
+func TestMoveCost1x1(t *testing.T) {
+    rank, board := setUp(1)
+    goal := cell.Cell{I: 0}
+    pos := cell.Cell{I: 0}
+    start := cell.Cell{I: 0}
+    expected := 0.000
+    if x := MoveCost(pos, goal, start, rank, board); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
-    c = Cell{i: 8}
-    exX, exY = 2, 2
-    if x, y := c.xy(3); x != exX || y != exY {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", c.i, x, y, exX, exY)
-    }
-    c = Cell{i: 2}
-    exX, exY = 0, 2
-    if x, y := c.xy(3); x != exX || y != exY {
-		t.Errorf("Bad pair calculation, %d->(%d,%d), not (%d,%d)", c.i, x, y, exX, exY)
+    board[0] = true
+    expected = 9e9
+    if x := MoveCost(pos, goal, start, rank, board); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
 }
 
-func TestManhattanDistance(t *testing.T) {
-    // grid of 9 squares, bottom right to top left
-    // best distance is 4: straight to an opposing corner, then across to the goal.
-    if distance := ManhattanDistance(2, 0, 2, 0); distance != 4 {
-		t.Errorf("Incorrect Manhattan distance calculation on 3x3 grid, %d != 4", distance)
+// [g.] and [*.] and [g*] and [s.]
+// [.s]     [.s]     [.s]     [.g]
+func TestMoveCost2x2(t *testing.T) {
+    rank, board := setUp(2)
+    goal := cell.Cell{I: 0}
+    pos := cell.Cell{I: 3}
+    start := cell.Cell{I: 3}
+    expected := 1.000
+    if x := MoveCost(pos, goal, start, rank, board); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
-    if distance := ManhattanDistance(2, 1, 2, 0); distance != 3 {
-		t.Errorf("Incorrect Manhattan distance calculation on 3x3 grid, %d != 3", distance)
-    }
-    if distance := ManhattanDistance(2, 0, 0, 0); distance != 2 {
-		t.Errorf("Incorrect Manhattan distance calculation on 3x3 grid, %d != 2", distance)
+    board[0] = true
+    expected = 9e9
+    if x := MoveCost(pos, goal, start, rank, board); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
 }
 
-func TestInformedManhattanDistance(t *testing.T) {
-    // grid of 9 squares, buttom right to top left
-    topleft := Cell{i: 0}
-    bottomright := Cell{i: 8}
-    northofstart := Cell{i: 5}
-    westofstart := Cell{i: 7}
-    topright := Cell{i: 2}
-    if distance := InformedManhattanDistance(bottomright, topleft, bottomright, 3); distance != 4.008 {
-		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 4.008", distance)
+func TestMoveCost3x3(t *testing.T) {
+    testBoardRank := 3
+    testBoard := make([]bool, testBoardRank*testBoardRank)
+    goal := cell.Cell{I: 0}
+    pos := cell.Cell{I: 4}
+    start := cell.Cell{I: 7} // XXX: WTF?
+    expected := 1.000
+    if x := MoveCost(pos, start, goal, testBoardRank, testBoard); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
-    if distance := InformedManhattanDistance(northofstart, topleft, bottomright, 3); distance != 3.006 {
-		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 3.006", distance)
+    pos.I = 8
+    expected = 2.000
+    if x := MoveCost(pos, start, goal, testBoardRank, testBoard); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
-    if distance := InformedManhattanDistance(westofstart, topleft, bottomright, 3); distance != 3.006 {
-		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 3.006", distance)
+//    expected = 6.000
+//    if x := a.FudgeTaxiDistance(b, a, testBoardRank); x != expected {
+//        t.Errorf("Cell %d and %d same row, but x is %.4f, not %.4f", a.I, c.I, x, expected)
+//    }
+//    expected = 7.006
+//    if x := b.FudgeTaxiDistance(c, a, testBoardRank); x != expected {
+//        t.Errorf("Cell %d and %d expected to have adjustment, but x is %.4f not %.4f", b.I, c.I, x, expected)
+//    }
+    // TODO(jrbl): establish 3x3 grid, do real line-of-site comparison for various
+    //             straight-line paths. (Work them out by hand first.)
+}
+
+/*func TestFudgeTaxiDistance(t *testing.T) {
+    testBoardRank := 7
+    a := Cell{I: 0}
+    b := Cell{I: 6}
+    c := Cell{I: 7}
+    expected := 1.000
+    if x := a.FudgeTaxiDistance(c, a, testBoardRank); x != expected {
+        t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", a.I, b.I, x, expected)
     }
-    if distance := InformedManhattanDistance(topright, topleft, bottomright, 3); distance != 2.004 {
-		t.Errorf("Incorrect Informed Manhattan distance calculation on 3x3 grid, %d != 2.004", distance)
-    } 
-} 
+    expected = 6.000
+    if x := a.FudgeTaxiDistance(b, a, testBoardRank); x != expected {
+        t.Errorf("Cell %d and %d same row, but x is %.4f, not %.4f", a.I, c.I, x, expected)
+    }
+    expected = 7.006
+    if x := b.FudgeTaxiDistance(c, a, testBoardRank); x != expected {
+        t.Errorf("Cell %d and %d expected to have adjustment, but x is %.4f not %.4f", b.I, c.I, x, expected)
+    }
+    // TODO(jrbl): establish 3x3 grid, do real line-of-site comparison for various
+    //             straight-line paths. (Work them out by hand first.)
+} */
 
 /* func TestInitializeBoard(t *testing.T) {
 	// TODO: is it good practice to make InitializeBoard return error r/t log and die directly,
