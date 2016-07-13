@@ -19,8 +19,9 @@ const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 // Distance gives the geometric distance between two points on the coordinate plane
 func distance(ax, ay, bx, by int) float64 {
     //    math.Sqrt( (bx - ax)**2 - (by - ay)**2 )
-    return math.Sqrt( math.Pow(bx - ax, 2), math.Pow(by - ay, 2) )
-    
+    v := math.Sqrt( math.Pow(float64(bx - ax), 2) - math.Pow(float64(by - ay), 2) )
+    fmt.Printf("(%d - %d) = %d    (%d - %d) = %d\n", bx, ax, bx-ax, by, ay, by-ay)
+    return v
 }
 
 // validateCells confirms that every cell in cs has an .I that fits in board
@@ -43,20 +44,27 @@ func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
     posX, posY := c.XY(rank)
     goalX, goalY := goal.XY(rank)
     startX, startY := start.XY(rank)
-    fmt.Println("p", c.I, ":", posX, posY)
-    fmt.Println("g", goal.I, ":", goalX, goalY)
-    fmt.Println("s", start.I, ":", startX, startY)
+        //fmt.Println("p", c.I, ":", posX, posY)
+        //fmt.Println("g", goal.I, ":", goalX, goalY)
+        //fmt.Println("s", start.I, ":", startX, startY)
     dx1 := posX - goalX
     dy1 := posY - goalY
     dx2 := startX - goalX
     dy2 := startY - goalY
-    fmt.Println("sums", dx1, dy1, dx2, dy2)
+        //fmt.Println("sums", dx1, dy1, dx2, dy2)
     crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
     // Taxidistance is an inadmissable heuristic, because it badly overestimate costs in case where
     // we're allowed to make diagonal moves. TODO(jrbl): and use geometric distance 
     //heuristic := 0.25 * c.TaxiDistance(goal, rank)
     //return heuristic + crossProduct*0.001
-    return crossProduct
+    if posX > 3000 {
+        fmt.Println("used weird heuristic")
+        return distance(startX, startY, goalX, goalY)
+    } else {
+        fmt.Println("------------")
+        d := distance(posX, posY, goalX, goalY)
+        return crossProduct + d
+    }
 }
 
 
