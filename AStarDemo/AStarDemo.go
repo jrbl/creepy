@@ -12,22 +12,14 @@ import "time"
 
 const WINDOWSIZE = 720 // TODO: query for max y and make biggest square possible
 //const BBSZ = int32(6) // borderbox size: 720/6 = 120, giving 14400 box grid
-const BBSZ = int32(102) // borderbox size: 720/6 = 120, giving 14400 box grid
+const BBSZ = int32(144) // 240 = 3, 180 = 4, 144 = 5, 120 = 6, 102 = 7, 
 const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
 // Distance gives the geometric distance between two points on the coordinate plane
 func distance(ax, ay, bx, by int) float64 {
-    //    math.Sqrt( (bx - ax)**2 - (by - ay)**2 )
-    v := math.Sqrt( math.Pow(float64(bx - ax), 2) - math.Pow(float64(by - ay), 2) )
-    //if ax > 110 && ay > 110 {
-    //    fmt.Println("------------")
-    //    fmt.Printf("(%d,%d) -> (%d, %d)\n", ax, ay, bx, by)
-    //    fmt.Printf("(%d - %d) = %d ^2 = %.2f    (%d - %d) = %d ^2 = %.2f\n", bx, ax, bx-ax, math.Pow(float64(bx-ax), 2), 
-    //        by, ay, by-ay, math.Pow(float64(by-ay), 2))
-    //}
-    return v
+    return math.Sqrt( math.Pow(float64(bx - ax), 2) - math.Pow(float64(by - ay), 2) )
 }
 
 // validateCells confirms that every cell in cs has an .I that fits in board
@@ -66,12 +58,11 @@ func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
     //    d := distance(posX, posY, goalX, goalY)
     //    return crossProduct + d
     //}
+    if posX > 3000 {
     return 0.9 * math.Sqrt(crossProduct)
-/*    if posX > 3000 {
-    return 0.5 * crossProduct
-} else {
+    } else {
     return distance(posX, posY, goalX, goalY)
-} */
+    }
 }
 
 
