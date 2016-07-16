@@ -11,7 +11,8 @@ import "time"
 
 
 const WINDOWSIZE = 720 // TODO: query for max y and make biggest square possible
-const BBSZ = int32(6) // borderbox size: 720/6 = 120, giving 14400 box grid
+//const BBSZ = int32(6) // borderbox size: 720/6 = 120, giving 14400 box grid
+const BBSZ = int32(102) // borderbox size: 720/6 = 120, giving 14400 box grid
 const CBSZ = int32(5) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
@@ -20,7 +21,12 @@ const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 func distance(ax, ay, bx, by int) float64 {
     //    math.Sqrt( (bx - ax)**2 - (by - ay)**2 )
     v := math.Sqrt( math.Pow(float64(bx - ax), 2) - math.Pow(float64(by - ay), 2) )
-    fmt.Printf("(%d - %d) = %d    (%d - %d) = %d\n", bx, ax, bx-ax, by, ay, by-ay)
+    //if ax > 110 && ay > 110 {
+    //    fmt.Println("------------")
+    //    fmt.Printf("(%d,%d) -> (%d, %d)\n", ax, ay, bx, by)
+    //    fmt.Printf("(%d - %d) = %d ^2 = %.2f    (%d - %d) = %d ^2 = %.2f\n", bx, ax, bx-ax, math.Pow(float64(bx-ax), 2), 
+    //        by, ay, by-ay, math.Pow(float64(by-ay), 2))
+    //}
     return v
 }
 
@@ -44,27 +50,28 @@ func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
     posX, posY := c.XY(rank)
     goalX, goalY := goal.XY(rank)
     startX, startY := start.XY(rank)
-        //fmt.Println("p", c.I, ":", posX, posY)
-        //fmt.Println("g", goal.I, ":", goalX, goalY)
-        //fmt.Println("s", start.I, ":", startX, startY)
     dx1 := posX - goalX
     dy1 := posY - goalY
     dx2 := startX - goalX
     dy2 := startY - goalY
-        //fmt.Println("sums", dx1, dy1, dx2, dy2)
     crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
     // Taxidistance is an inadmissable heuristic, because it badly overestimate costs in case where
     // we're allowed to make diagonal moves. TODO(jrbl): and use geometric distance 
     //heuristic := 0.25 * c.TaxiDistance(goal, rank)
     //return heuristic + crossProduct*0.001
-    if posX > 3000 {
-        fmt.Println("used weird heuristic")
-        return distance(startX, startY, goalX, goalY)
-    } else {
-        fmt.Println("------------")
-        d := distance(posX, posY, goalX, goalY)
-        return crossProduct + d
-    }
+    //if posX > 3000 {
+    //    fmt.Println("used weird heuristic")
+    //    return distance(startX, startY, goalX, goalY)
+    //} else {
+    //    d := distance(posX, posY, goalX, goalY)
+    //    return crossProduct + d
+    //}
+    return 0.9 * math.Sqrt(crossProduct)
+/*    if posX > 3000 {
+    return 0.5 * crossProduct
+} else {
+    return distance(posX, posY, goalX, goalY)
+} */
 }
 
 
@@ -76,7 +83,7 @@ func PlotRoute(board []bool, creep int, goal int) []int {
 
     openSet := cell.NewHeap()
     startCell := cell.Cell{I: startPos}
-    startCell.H = startCell.FudgeTaxiDistance(goalCell, startCell, rank)
+    startCell.H = MoveCost(startCell, goalCell, startCell, rank, board)
     openSet.Add(&startCell)
 
     closedSet := cell.NewHeap() // cells already evaluated (starts empty)
@@ -84,12 +91,18 @@ func PlotRoute(board []bool, creep int, goal int) []int {
     parents := make([]int, len(board)) // track how we get to each cell on our path
     parents[startPos] = -1  // special flag value so we know where to stop traversal
 
+    fmt.Println("start h:", startCell.H) // DEBUG
+    fmt.Printf("parents: %v\n", parents) // DEBUG
+
     moveCost := func (c cell.Cell) float64 { return MoveCost(c, goalCell, startCell, rank, board) }
 
     current := openSet.Remove()               // startCell, because nothing else present
     for current.I != goalCell.I {             // while lowest rank in OPEN is not the GOAL:
         closedSet.Add(current)
         neighbors := current.Neighbors(rank)
+        if true { // DEBUG
+            fmt.Printf("%di;%.4fh: %v o%d/c%d\n", current.I, current.H, neighbors, len(openSet), len(closedSet))
+        }
         for _, pos := range neighbors {          //  for neighbors of current:
             if pos == -1 {
                 continue  // Don't fall off the edge of the world.
@@ -100,32 +113,51 @@ func PlotRoute(board []bool, creep int, goal int) []int {
 
             if openCellref != nil {  // if it's in open set, recalculate cost estimate if necessary
                 costEstimate := float64(current.H) + moveCost(*openCellref)
+                if true { // DEBUG
+                    fmt.Printf("%d Neighbor at %d in openCellref, old cost = %.4f", current.I, openCellref.I, openCellref.H)
+                }
                 if openCellref.H > costEstimate {
+                    fmt.Printf(", new cost = %.4f", costEstimate) // DEBUG
                     openSet.Revalue(openCellref, costEstimate)
                     parents[openCellref.I] = current.I // update parent of openCellref to current
                 }
+                fmt.Printf("\n") // DEBUG
             } else if closedCellref != nil { // if it's in the closed set, move it to open set if necessary
                 costEstimate := float64(current.H) + moveCost(*closedCellref)
+                if true { // DEBUG
+                    fmt.Printf("%d Neighbor at %d in closedCellref, old cost = %.4f", current.I, closedCellref.I, closedCellref.H)
+                }
                 if closedCellref.H > costEstimate {
+                    fmt.Printf(", new cost = %.4f", costEstimate) // DEBUG
                     closedCellref = closedSet.Unlink(closedCellref) // remove from closedSet
                     closedCellref.H = costEstimate  // update H to costEstimate, which is better
                     openSet.Add(closedCellref)  // move it back over to the openSet with new estimate
                     parents[closedCellref.I] = current.I  // update parent of closedCellref to current
                 }
+                fmt.Printf("\n") // DEBUG
             } else { // neither in open set or closed set, so add it as new
                 pCell := cell.Cell{I: pos}
                 // cost = g(current) + movementcost(current, neighbor)
                 cost := float64(current.H) + moveCost(pCell)
                 pCell.H = cost
+                if true { // DEBUG
+                    fmt.Printf("%d Neighbor at %d in neither set, new cost = %.4f\n", current.I, pos, cost)
+                }
                 openSet.Add(&pCell)
                 parents[pCell.I] = current.I  // set parent of pCell to current
             }
         }
+        if true { // DEBUG
+            fmt.Printf("%di;%.4fh: %v o%d/c%d\n", current.I, current.H, neighbors, len(openSet), len(closedSet))
+        }
         current = openSet.Remove()           // current = remove lowest rank item from OPEN
+        fmt.Printf("parents: %v\n", parents)
     }
 
     /*reconstruct reverse path from goal to start by following parent pointers */
     path := make([]int, 0, len(board))
+    path = append(path, 0)
+    fmt.Println(parents)
     for i := 0; parents[i] != -1; i = parents[i] {
         path = append(path, parents[i])
     }
@@ -316,6 +348,34 @@ func main() {
     var running int
     var err error
 
+    // Game Setup
+    rand.Seed(time.Now().Unix()) // insecure seed is sufficient in this case
+    field_edge := WINDOWSIZE/BBSZ
+    fmt.Println(field_edge) // DEBUG
+    field_size := field_edge * field_edge
+    life_board := make([]bool, field_size)
+    life_board = RandomizeBoard(life_board, 25) // normal value 15
+
+    creep := int(field_size-1) // TODO: tunable creep entry?
+    goal := 0 // TODO: tunable creep exit?
+    creep_path := PlotRoute(life_board, creep, goal)
+    fmt.Printf("%v\n", creep_path)
+
+    for i, itm := range life_board { // DEBUG PRINTOUT
+        skip := false
+        if i % int(field_edge) == 0 {
+            fmt.Printf("\n")
+        }
+        for _, j := range creep_path { if j == i { fmt.Printf("+"); skip = true } }
+        if skip { continue }
+        if itm {
+            fmt.Printf("#")
+        } else {
+            fmt.Printf(".")
+        }
+    } ; fmt.Printf("\n") // DEBUG PRINTOUT
+
+    if goal == -1 { // DEBUG
     // SDL Boilerplate Start
     if err = sdl.Init(sdl.INIT_EVERYTHING); err != nil {
         panic(err)
@@ -333,23 +393,14 @@ func main() {
     if err != nil {
         panic(err)
     }
-
-    // Game Setup
-    rand.Seed(time.Now().Unix()) // insecure seed is sufficient in this case
-    field_edge := WINDOWSIZE/BBSZ
-    field_size := field_edge * field_edge
-    life_board := make([]bool, field_size)
-    life_board = RandomizeBoard(life_board, 15)
-
-    creep := int(field_size-1) // TODO: tunable creep entry?
-    goal := 0 // TODO: tunable creep exit?
+    } // DEBUG
 
     // Draw stuff and deal with events
     // TODO: running states -1,0,1 should probably be some kind of enum. XXX TODO: research enums
-    running = 1
+    // running = 1 
+    running = -1 // DEBUG
     for running != -1 {
         running = checkEvents(running, life_board)
-        creep_path := PlotRoute(life_board, creep, goal)
         paintBoxes(surface, life_board, creep, goal, creep_path)
         window.UpdateSurface()
 

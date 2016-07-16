@@ -3,6 +3,30 @@ package cell
 //import "fmt"
 import "testing"
 
+func TestXY1x1(t *testing.T) {
+    testBoardRank := 1
+    testCell := Cell{I: 0}
+    if x, y := testCell.XY(testBoardRank); x != 0 && y != 0 {
+        t.Errorf("Expected cell 0 on rank 1 is (0,0), not (%d,%d)", x, y)
+    }
+}
+
+func TestXY2x2(t *testing.T) {
+    testBoardRank := 2
+    testCell := Cell{I: 0}
+    if x, y := testCell.XY(testBoardRank); x != 0 && y != 0 {
+        t.Errorf("Expected cell 0 on rank 1 is (0,0), not (%d,%d)", x, y)
+    }
+    testCell = Cell{I: 1}
+    if x, y := testCell.XY(testBoardRank); x != 0 && y != 1 {
+        t.Errorf("Expected cell 0 on rank 1 is (1,0), not (%d,%d)", x, y)
+    }
+    testCell = Cell{I: 3}
+    if x, y := testCell.XY(testBoardRank); x != 1 && y != 1 {
+        t.Errorf("Expected cell 0 on rank 1 is (1,1), not (%d,%d)", x, y)
+    }
+}
+    
 func TestXY(t *testing.T) {
     testBoardRank := 7
     testCell := Cell{I: 0, H: 0.25}
@@ -16,6 +40,11 @@ func TestXY(t *testing.T) {
     testCell.I = 7
     if x, y := testCell.XY(testBoardRank); x != 1 && y != 0 {
         t.Errorf("Expected position of cell 7 on rank 7 board is (1,0), not (%d,%d)", x, y)
+    }
+    testBoardRank = 4
+    testCell = Cell{I: 11}
+    if x, y := testCell.XY(testBoardRank); x != 2 && y != 3 {
+        t.Errorf("Expected position of cell 11 on rank 4 board is (2,3), not (%d,%d)", x, y)
     }
 }
 
@@ -82,7 +111,18 @@ func TestFudgeTaxiDistance(t *testing.T) {
     //             straight-line paths. (Work them out by hand first.)
 }
 
-func TestNeighbors(t *testing.T) {
+func TestNeighbors4x4(t *testing.T) {
+    //tl := Cell{I: 0} // tl is top left
+    c := Cell{I: 11}  // c is just above br
+    //br := Cell{I: 15} // br is bottom right
+    rank := 4
+    ns := c.Neighbors(rank)
+    expect := [8]int{6, 7, -1, 10, -1, 14, 15, -1}
+    if ns != expect {
+        t.Errorf("Incorrect neighbor array %v for cell %d, expected %v", ns, c.I, expect)
+    }
+}
+func TestNeighbors3x3(t *testing.T) {
     tl := Cell{I: 0} // tl is top left of 3x3 grid
     c := Cell{I: 4}  // c is center of 3x3 grid
     br := Cell{I: 8} // br is bottom right of 3x3 grid

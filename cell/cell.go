@@ -14,9 +14,9 @@ type Cell struct {
 
 // XY converts Cell.I 1d slice index into 2d positions, with (0, 0) on top left of grid
 func (c *Cell) XY(rank int) (int, int) {
-    x := c.I / rank
-    y := c.I % rank
-    return x, y
+    col := c.I % rank
+    row := c.I / rank
+    return row, col
 }
 
 // TaxiDistance calculates the Taxicab distance (Manhattan Distance) between two Cells.
@@ -28,23 +28,6 @@ func (c *Cell)  TaxiDistance(goal Cell, rank int) float64 {
     // D := 1 // D is an edge weighting
     // return D * (dX + dY)
     return dX + dY
-}
-
-// Like FudgeTaxiDistance, but live cells are way too expensive (because eventually they kill us)
-func (c *Cell) MoveCost(goal Cell, start Cell, rank int, board []bool) float64 {
-    if board[c.I] {
-        return float64(9e9)
-    }
-    goalX, goalY := goal.XY(rank)
-    startX, startY := start.XY(rank)
-    posX, posY := c.XY(rank)
-    heuristic := c.TaxiDistance(goal, rank)
-    dx1 := posX - goalX
-    dy1 := posY - goalY
-    dx2 := startX - goalX
-    dy2 := startY - goalY
-    crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
-    return heuristic + crossProduct*0.001
 }
 
 // TaxiDistance, plus a tiny fudge-factor calculated from deviation from straight line path
@@ -61,12 +44,11 @@ func (c *Cell) FudgeTaxiDistance(goal Cell, start Cell, rank int) float64 {
     return heuristic + crossProduct*0.001
 }
 
-//func neighborIndices(i int, board []bool) [8]int {
 // Get a list of the board indices of this Cell; return -1 for indices that fall off the edge of the board
 func (c *Cell) Neighbors(rank int) [8]int {
     n := 0
     neighbors := [8]int{}
-    col, row := c.XY(rank)
+    row, col := c.XY(rank)
     for i := -1; i <= 1; i += 1 {
         for j := -1; j <= 1; j += 1 {
             if i == 0 && j == 0 { continue }

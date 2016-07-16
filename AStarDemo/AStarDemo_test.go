@@ -1,12 +1,10 @@
 package main
 
-import "fmt"
 import "github.com/jrbl/creepy/cell"
 import "testing"
 
 
 func setUp(size int) (int, []bool) {
-    fmt.Println("Setting up", size)
     return size, make([]bool, size*size)
 }
 
@@ -39,6 +37,7 @@ func TestMoveCost2x2(t *testing.T) {
         t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
     }
     board[0] = true
+    pos.I = 0
     expected = 9e9
     if x := MoveCost(pos, goal, start, rank, board); x != expected {
         t.Errorf("Cell %d and %d close, but x is %.4f not %.4f", pos.I, goal.I, x, expected)
