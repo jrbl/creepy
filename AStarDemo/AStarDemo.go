@@ -12,14 +12,17 @@ import "time"
 
 const WINDOWSIZE = 720 // TODO: query for max y and make biggest square possible
 //const BBSZ = int32(6) // borderbox size: 720/6 = 120, giving 14400 box grid
-const BBSZ = int32(144) // 240 = 3, 180 = 4, 144 = 5, 120 = 6, 102 = 7, 
-const CBSZ = int32(5) // cellbox size: <= BBSZ
+//const CBSZ = int32(5) // cellbox size: <= BBSZ
+const BBSZ = int32(72) // 240 = 3, 180 = 4, 144 = 5, 120 = 6, 102 = 7, 90 = 8, 80 = 9, 72 = 10, 
+const CBSZ = int32(71) // cellbox size: <= BBSZ
 const BORDER = int32(1) // normally BBSZ-CBSZ, or (BBSZ-CBSZ)*0.5
 
 
 // Distance gives the geometric distance between two points on the coordinate plane
 func distance(ax, ay, bx, by int) float64 {
-    return math.Sqrt( math.Pow(float64(bx - ax), 2) - math.Pow(float64(by - ay), 2) )
+    val := math.Sqrt( math.Pow(float64(bx - ax), 2) + math.Pow(float64(by - ay), 2) )
+    //fmt.Printf("distance: (%d, %d) -> (%d, %d) = %.4f\n", ax, ay, bx, by, val)
+    return val
 }
 
 // validateCells confirms that every cell in cs has an .I that fits in board
@@ -33,12 +36,9 @@ func validateCells(cs []cell.Cell, rank int) bool {
     return val
 }
 
-// MoveCost uses Taxidistance plus the calculation of deviation from a straight-line path to calculate 
-// movement cost from a particular cell c to goal. Makes cells which evaluate to True on board effectively
-// infinite in cost.
-func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
-    if !validateCells([]cell.Cell{c, goal, start}, rank)  { panic("bad cell bounds") }
-    if board[c.I] { return float64(9e9) }
+// MoveCost uses the calculation of deviation from a straight-line path to calculate  movement cost 
+// from a particular cell c to goal. Makes cells which evaluate to True on board effectively infinite in cost.
+func moveCostCrossproduct(c, goal, start cell.Cell, rank int, board []bool) float64 {
     posX, posY := c.XY(rank)
     goalX, goalY := goal.XY(rank)
     startX, startY := start.XY(rank)
@@ -47,21 +47,25 @@ func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
     dx2 := startX - goalX
     dy2 := startY - goalY
     crossProduct := math.Abs(float64(dx1*dy2) + float64(dy1*dx2))
-    // Taxidistance is an inadmissable heuristic, because it badly overestimate costs in case where
-    // we're allowed to make diagonal moves. TODO(jrbl): and use geometric distance 
-    //heuristic := 0.25 * c.TaxiDistance(goal, rank)
-    //return heuristic + crossProduct*0.001
-    //if posX > 3000 {
-    //    fmt.Println("used weird heuristic")
-    //    return distance(startX, startY, goalX, goalY)
-    //} else {
-    //    d := distance(posX, posY, goalX, goalY)
-    //    return crossProduct + d
-    //}
-    if posX > 3000 {
+    // empirical adjustment to keep score admissible
     return 0.9 * math.Sqrt(crossProduct)
-    } else {
-    return distance(posX, posY, goalX, goalY)
+}
+
+
+// MoveCost uses chooses between the crossproduct and a straight-up geometric distance calculation for easy comparison.
+// Panics on bad cell bounds.
+// Short circuits to make cells which evaluate to True extraordinarily high cost.
+func MoveCost(c, goal, start cell.Cell, rank int, board []bool) float64 {
+    if !validateCells([]cell.Cell{c, goal, start}, rank)  { panic("bad cell bounds") }
+    if board[c.I] { return float64(9e9) }
+
+    selector := 1
+    if selector == 0 {
+        return moveCostCrossproduct(c, goal, start, rank, board)
+    } else { 
+        ax, ay := c.XY(rank)
+        bx, by := goal.XY(rank)
+        return distance(ax, ay, bx, by)
     }
 }
 
@@ -183,9 +187,9 @@ func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_p
     colors := getPallette(surface)
     colorFunc := func (i int) uint32 {
         if i == creep {
-            return colors["GREEN"]
-        } else if  i == goal {
             return colors["RED"]
+        } else if  i == goal {
+            return colors["GREEN"]
         } else if board[i] {
             return colors["YELLOW"]
         } else {
@@ -208,7 +212,11 @@ func paintBoxes(surface *sdl.Surface, board []bool, creep int, goal int, creep_p
     for _, j := range creep_path {
         cs := coordsFunc(j)
         rect := sdl.Rect{cs.x+BORDER, cs.y+BORDER, CBSZ, CBSZ}
-        surface.FillRect(&rect, colors["BLUE"])
+        if board[j] {
+            surface.FillRect(&rect, colors["VIOLET"])
+        } else {
+            surface.FillRect(&rect, colors["BLUE"])
+        }
     }
 }
 
@@ -325,7 +333,6 @@ func CalcNextBoard(board []bool) []bool {
 */
 
 /* TODO: 
- * Implement A* search
  * Animate it running to prove to yourself how clever you are
  * Try it with different values to RandomizeBoard's fillchance
  * Try it with start and goal in different places, randomize them?
@@ -366,7 +373,6 @@ func main() {
         }
     } ; fmt.Printf("\n") // DEBUG PRINTOUT
 
-    if goal == -1 { // DEBUG
     // SDL Boilerplate Start
     if err = sdl.Init(sdl.INIT_EVERYTHING); err != nil {
         panic(err)
@@ -384,12 +390,11 @@ func main() {
     if err != nil {
         panic(err)
     }
-    } // DEBUG
 
     // Draw stuff and deal with events
     // TODO: running states -1,0,1 should probably be some kind of enum. XXX TODO: research enums
-    // running = 1 
-    running = -1 // DEBUG
+    running = 1 
+    //running = -1 // DEBUG
     for running != -1 {
         running = checkEvents(running, life_board)
         paintBoxes(surface, life_board, creep, goal, creep_path)
